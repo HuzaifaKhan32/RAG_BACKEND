@@ -103,5 +103,5 @@ async def chat_with_rag_endpoint(request: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))  # Railway sets PORT automatically
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+        port = int(os.environ.get("PORT", 8000))  # Railway sets PORT automatically
+        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
