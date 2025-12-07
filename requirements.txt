@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+qdrant-client
+pydantic
+langchain # For document loading and chunking, if not implemented manually
+python-multipart # Needed for file uploads, if any
+openai
+openai-agents
