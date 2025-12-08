@@ -24,12 +24,11 @@ app = FastAPI(
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://ai-robotics-humanoid-book-hackathon.vercel.app/").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=["*"],  # Allow all origins temporarily
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # --- Initialize RAG Engine ---
 rag_engine = RAGEngine()
 
