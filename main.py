@@ -21,7 +21,7 @@ app = FastAPI(
 )
 
 # --- CORS Configuration ---
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://ai-robotics-humanoid-book-hackathon.vercel.app/").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
