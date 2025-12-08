@@ -84,7 +84,7 @@ class GeminiAgentClient:
             response = await self.client.chat.completions.create(
                 model=GEMINI_MODEL_NAME,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
+                temperature=0.5,
                 max_tokens=1500,
             )
             content = response.choices[0].message.content
