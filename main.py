@@ -64,7 +64,7 @@ async def root():
 @app.get("/api/debug/collection-info")
 async def get_collection_info():
     try:
-        collection_info = await rag_engine.qdrant_client.get_collection("rag_chatbot_collection")
+        collection_info = await rag_engine.client.get_collection("rag_chatbot_collection")
         return {
             "collection_name": "rag_chatbot_collection",
             "points_count": collection_info.points_count,
@@ -72,6 +72,7 @@ async def get_collection_info():
         }
     except Exception as e:
         return {"error": str(e)}
+
 @app.get("/api/health")
 async def health_check():
     """Health check - simplified version"""
