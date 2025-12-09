@@ -65,7 +65,7 @@ async def ping():
     return {"ok": True}
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat/query", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
     Main chat endpoint for RAG-powered conversations.
