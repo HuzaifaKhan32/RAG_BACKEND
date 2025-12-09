@@ -16,8 +16,9 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "rag_chatbot_collection")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Get project root directory
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DOCS_PATH = os.path.join(PROJECT_ROOT, "docusaurus", "docs")
+# PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DOCS_PATH = os.getenv("DOCS_PATH") or os.path.join(PROJECT_ROOT, "docusaurus", "docs")
+
 
 # Debug
 print(f"[DEBUG] Project root: {PROJECT_ROOT}")
