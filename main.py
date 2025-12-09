@@ -21,15 +21,14 @@ app = FastAPI(
 )
 
 # --- CORS Configuration ---
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://ai-robotics-humanoid-book-hackathon.vercel.app/").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=["*"],  # Allow all origins temporarily
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # --- Initialize RAG Engine ---
 rag_engine = RAGEngine()
 
@@ -62,6 +61,23 @@ async def root():
         "health": "/api/health",
         "chat": "/api/chat/query"
     }
+@app.get("/api/debug/collection-info")
+async def get_collection_info():
+    try:
+        info = await rag_engine.vector_db_client.get_collection_info()
+        if info:
+            return {
+                "collection_name": rag_engine.vector_db_client.collection_name,
+                "vectors": info.vectors_count if hasattr(info, "vectors_count") else None,
+                "status": "ok"
+            }
+        else:
+            return {
+                "error": "Failed to retrieve collection info"
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.get("/api/health")
 async def health_check():
@@ -102,4 +118,6 @@ async def chat_with_rag_endpoint(request: ChatRequest):
         
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    if __name__ == "__main__":
+        port = int(os.environ.get("PORT", 8000))  # Railway sets PORT automatically
+        uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
