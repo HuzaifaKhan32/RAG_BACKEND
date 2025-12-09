@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from dotenv import load_dotenv
-
+import uvicorn
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.rag_engine import RAGEngine
@@ -117,6 +117,6 @@ async def chat_with_rag_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
         
 if __name__ == "__main__":
-    import uvicorn
+    
     port = int(os.environ.get("PORT", 8000))  # allow env override for platforms like Railway
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
