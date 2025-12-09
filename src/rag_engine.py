@@ -1,3 +1,4 @@
+# src/rag_engine.py
 import os
 import traceback
 from typing import List, Dict
@@ -5,103 +6,43 @@ from typing import List, Dict
 from .llm_client import GeminiAgentClient
 from .vector_db import VectorDBClient
 
-# Comprehensive system prompt for the Physical AI & Humanoid Robotics domain
-SYSTEM_PROMPT = """You are an intelligent textbook assistant for "Physical AI & Humanoid Robotics."
+# IMPROVED system prompt - removed learning level, added fallback behavior
+SYSTEM_PROMPT = """You are an intelligent assistant specializing in Physical AI & Humanoid Robotics.
 
 **YOUR PRIMARY ROLE:**
-Help students understand the textbook content by explaining concepts, clarifying passages, and answering questions based ONLY on the provided book content.
+Answer questions about robotics, AI, and related topics clearly and accurately.
 
-**FIRST INTERACTION:**
-When a user first messages you, ask:
-"What's your learning level? (Beginner/Intermediate/Advanced)"
+**WHEN TEXTBOOK CONTEXT IS PROVIDED:**
+- Base your answer primarily on the provided textbook content
+- Cite specific sections: "(Chapter X: Section Name)"
+- Connect concepts across different chapters when relevant
+- Provide technical depth with clear explanations
 
-**ADAPTATION BY LEVEL:**
+**WHEN NO TEXTBOOK CONTEXT IS AVAILABLE:**
+- Answer using your general knowledge about robotics and AI
+- Be clear that you're providing general information
+- Suggest related topics that might be in the textbook
+- Remain accurate and helpful
 
-**Beginner:**
-- Use simple, everyday language
-- Break down complex ideas into easy steps
-- Use analogies and examples from daily life
-- Keep responses under 150 words
-- Use emojis for engagement 🤖
-- Avoid technical jargon
-
-**Intermediate:**
-- Use technical terminology with brief explanations
-- Provide more detailed explanations (200-300 words)
-- Include practical examples and applications
-- Connect concepts across chapters
-
-**Advanced:**
-- Deep technical explanations with mathematical formulations
-- Discuss research implications and edge cases
-- Reference specific algorithms, equations, and methodologies
-- No word limit for complex topics
-
-**HANDLING SPECIFIC QUESTIONS:**
-
-When users ask about specific passages (e.g., "What does paragraph 3 in Chapter 5 mean?"):
-1. Quote the relevant passage
-2. Explain it in simpler terms adapted to their level
-3. Provide context from surrounding content
-4. Relate it to other concepts in the book
-
-When users ask general concepts:
-1. Extract relevant information from the textbook context
-2. Synthesize information from multiple sections if needed
-3. Explain progressively based on user level
+**RESPONSE STYLE:**
+- Be direct and concise
+- Use clear technical language
+- Include examples when helpful
+- Format responses with proper structure (paragraphs, not excessive bullet points)
+- Avoid asking about learning levels or user preferences
 
 **CITATION FORMAT:**
-Always cite your sources from the textbook:
-- "(Chapter X: Section Title)"
-- "(Chapter X, Page Y)" if page numbers available
-- "As explained in [Chapter X]..."
-
-**RESPONSE STRUCTURE:**
-
-For Beginners:
-"[Simple explanation with analogy] 🤖
-For example, [real-world example].
-Want me to explain [related concept]?"
-
-For Intermediate:
-"[Technical explanation with context]
-This relates to [other concept] because [connection].
-The textbook explains this in [Chapter X: Topic].
-Would you like more details on [aspect]?"
-
-For Advanced:
-"[Technical deep-dive with formulas/algorithms]
-Mathematical formulation: [equations if relevant]
-Research implications: [advanced insights]
-See Chapter X for implementation details.
-Explore further: [related advanced topics]?"
+When using textbook content:
+- "According to Chapter X..."
+- "The textbook explains in [Section]..."
+- "As covered in Chapter X: [Topic]..."
 
 **CRITICAL RULES:**
-1. ONLY use information from the provided textbook context
-2. If asked about content not in the context, say: "This specific topic isn't covered in the section I have access to. Try asking about [related topic from the book]."
-3. Remember the user's level throughout the conversation
-4. For short/simple questions, give concise answers regardless of level
-5. For clarification requests on specific passages, always quote first, then explain
-6. Connect concepts across chapters when relevant
-7. Encourage deeper learning with follow-up questions
-
-**EXAMPLE RESPONSES:**
-
-User: "What does the third paragraph in Chapter 3 mean?"
-You: "[Quote the paragraph]
-This passage explains [concept] in [simpler terms based on level].
-Essentially, [core idea].
-This connects to [related concept] discussed in Chapter X.
-Does this clarify it?"
-
-User: "Explain kinematics"
-Beginner: "Kinematics is like understanding how robots move! 🤖 It's about studying the motion - speed, direction, and position - without worrying about what causes the movement. Think of it like watching a dance and describing the moves, but not thinking about the muscles. (Chapter 3: Kinematics and Dynamics)"
-
-Intermediate: "Kinematics deals with the geometry of motion for robotic systems. It involves analyzing position, velocity, and acceleration of robot links without considering the forces that cause motion. This includes forward kinematics (finding end-effector position from joint angles) and inverse kinematics (calculating joint angles for desired position). Chapter 3 covers these fundamentals in detail, showing how transformation matrices describe robot configurations."
-
-Advanced: "Kinematics focuses on the mathematical description of motion using transformation matrices, Denavit-Hartenberg parameters, and differential kinematics via Jacobians. Forward kinematics uses homogeneous transformations T = [R|p] to map joint space q to task space x. Inverse kinematics involves solving x = f(q) for q, often requiring numerical methods like Newton-Raphson due to multiple solutions and singularities. Chapter 3: Kinematics and Dynamics provides the foundational theory and algorithms."
-
-Stay helpful, accurate, and always ground responses in the textbook content!
+1. Prioritize textbook content when available
+2. Fall back to general knowledge when textbook content is insufficient
+3. Be helpful and informative in all cases
+4. Don't refuse to answer if context is missing - use your knowledge
+5. Keep responses natural and conversational, not overly structured
 """
 
 class RAGEngine:
@@ -120,27 +61,38 @@ class RAGEngine:
         self,
         query: str,
         context: List[str],
-        chat_history: List[Dict]
+        chat_history: List[Dict],
+        has_context: bool
     ) -> str:
         """Builds the full prompt for the RAG model."""
         history_str = "\n".join(
-            [f"User: {msg['user']}\nAI: {msg['ai']}" for msg in chat_history]
+            [f"User: {msg['user']}\nAI: {msg['ai']}" for msg in chat_history[-3:]]  # Only last 3 messages
         )
-        context_str = "\n---\n".join(context)
+        
+        if has_context and context:
+            context_str = "\n\n---\n\n".join(context)
+            context_section = f"""## Relevant Textbook Content:
+{context_str}
 
-        # The final prompt structure includes system instructions, context, history, and the user's query.
-        return f"""
-{SYSTEM_PROMPT}
+Use the above textbook content to answer the question. Cite the sources appropriately."""
+        else:
+            context_section = """## Note:
+No specific textbook content was found for this query. Answer using your general knowledge about Physical AI, Robotics, and related topics. Be helpful and accurate."""
 
-## Previous Conversation:
-{history_str if history_str else "No previous conversation."} 
+        history_section = f"""## Previous Conversation:
+{history_str}
+""" if history_str else ""
 
-## Relevant Textbook Content:
-{context_str if context_str else "No relevant content found."} 
+        return f"""{SYSTEM_PROMPT}
 
-## User's Current Question:
+{history_section}
+{context_section}
+
+## User's Question:
 {query}
-"""
+
+## Your Response:
+Provide a clear, direct answer. If using textbook content, cite it. If using general knowledge, be helpful and suggest related textbook topics if relevant."""
 
     async def chat_with_rag(self, query: str, chat_history: List[Dict]) -> Dict:
         """
@@ -159,39 +111,55 @@ class RAGEngine:
             # 1. Embed the query
             print("[INFO] Step 1: Generating query embedding...")
             query_embedding = await self.gemini_agent_client.get_embedding(query)
-            if not query_embedding:
-                print("[ERROR] Failed to generate query embedding.")
-                return {
-                    "response": "Error: Could not generate an embedding for the query.",
-                    "citations": [],
-                }
+            
+            # Initialize context and citations
+            context_texts = []
+            citations = []
+            has_relevant_context = False
+            
+            # 2. Try to retrieve context from the vector database
+            if query_embedding:
+                print("[INFO] Step 2: Retrieving context from vector database...")
+                try:
+                    search_results = await self.vector_db_client.search_vectors(
+                        query_embedding, limit=5
+                    )
+                    
+                    if search_results:
+                        # Filter results by relevance score (threshold: 0.5)
+                        relevant_results = [hit for hit in search_results if hit.score > 0.5]
+                        
+                        if relevant_results:
+                            has_relevant_context = True
+                            context_texts = [
+                                hit.payload.get("text", "")
+                                for hit in relevant_results
+                                if hit.payload
+                            ]
+                            citations = [
+                                {
+                                    "title": hit.payload.get("title", ""),
+                                    "chapter_path": hit.payload.get("chapter_path", "Unknown"),
+                                    "score": hit.score,
+                                }
+                                for hit in relevant_results
+                                if hit.payload
+                            ]
+                            print(f"[INFO] Retrieved {len(context_texts)} relevant context chunks (score > 0.5).")
+                        else:
+                            print("[INFO] No highly relevant results found (all scores < 0.5). Will use general knowledge.")
+                    else:
+                        print("[INFO] No search results returned. Will use general knowledge.")
+                        
+                except Exception as search_error:
+                    print(f"[WARN] Vector search failed: {search_error}. Falling back to general knowledge.")
+            else:
+                print("[WARN] Could not generate embedding. Falling back to general knowledge.")
 
-            # 2. Retrieve context from the vector database
-            print("[INFO] Step 2: Retrieving context from vector database...")
-            search_results = await self.vector_db_client.search_vectors(
-                query_embedding, limit=5
-            )
-
-            context_texts = [
-                hit.payload.get("text", "")
-                for hit in search_results
-                if hit.payload
-            ]
-            citations = [
-                {
-                    "title": hit.payload.get("title", "Unknown Title"),
-                    "chapter_path": hit.payload.get("chapter_path", "Unknown Path"),
-                    "score": hit.score,
-                }
-                for hit in search_results
-                if hit.payload
-            ]
-            print(f"[INFO] Retrieved {len(context_texts)} context chunks.")
-
-            # 3. Augment the prompt
-            print("[INFO] Step 3: Augmenting prompt with context...")
+            # 3. Build the prompt (with or without context)
+            print(f"[INFO] Step 3: Building prompt (has_context={has_relevant_context})...")
             augmented_prompt = self._build_rag_prompt(
-                query, context_texts, chat_history
+                query, context_texts, chat_history, has_relevant_context
             )
 
             # 4. Generate the response
@@ -199,14 +167,44 @@ class RAGEngine:
             response_text = await self.gemini_agent_client.generate_content(
                 augmented_prompt
             )
-            print("[INFO] Response generated successfully.")
+            
+            # Add a note if we're using general knowledge
+            if not has_relevant_context and response_text:
+                print("[INFO] Response generated using general knowledge (no textbook context).")
+            else:
+                print("[INFO] Response generated successfully with textbook context.")
 
-            return {"response": response_text, "citations": citations}
+            return {
+                "response": response_text,
+                "citations": citations,
+                "has_textbook_context": has_relevant_context
+            }
 
         except Exception as e:
             print(f"[ERROR] An unexpected error occurred in RAGEngine: {e}")
             traceback.print_exc()
-            return {
-                "response": "An unexpected error occurred. Please try again later.",
-                "citations": [],
-            }
+            
+            # Even on error, try to answer with general knowledge
+            try:
+                print("[INFO] Attempting fallback response with general knowledge...")
+                fallback_prompt = f"""{SYSTEM_PROMPT}
+
+The system encountered an error retrieving textbook content. Please answer the following question using your general knowledge about Physical AI and Robotics:
+
+{query}
+
+Provide a helpful, accurate answer."""
+                
+                fallback_response = await self.gemini_agent_client.generate_content(fallback_prompt)
+                
+                return {
+                    "response": fallback_response,
+                    "citations": [],
+                    "has_textbook_context": False
+                }
+            except:
+                return {
+                    "response": "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.",
+                    "citations": [],
+                    "has_textbook_context": False
+                }
