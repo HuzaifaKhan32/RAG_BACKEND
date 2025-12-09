@@ -18,7 +18,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Get project root directory
 # PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DOCS_PATH = os.getenv("DOCS_PATH") or os.path.join(PROJECT_ROOT, "docusaurus", "docs")
-
+print(DOCS_PATH)
 
 # Debug
 print(f"[DEBUG] Project root: {PROJECT_ROOT}")
