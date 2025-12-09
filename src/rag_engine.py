@@ -102,7 +102,7 @@ Intermediate: "Kinematics deals with the geometry of motion for robotic systems.
 Advanced: "Kinematics focuses on the mathematical description of motion using transformation matrices, Denavit-Hartenberg parameters, and differential kinematics via Jacobians. Forward kinematics uses homogeneous transformations T = [R|p] to map joint space q to task space x. Inverse kinematics involves solving x = f(q) for q, often requiring numerical methods like Newton-Raphson due to multiple solutions and singularities. Chapter 3: Kinematics and Dynamics provides the foundational theory and algorithms."
 
 Stay helpful, accurate, and always ground responses in the textbook content!
-
+"""
 
 class RAGEngine:
     """

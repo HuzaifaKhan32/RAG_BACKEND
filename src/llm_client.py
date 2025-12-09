@@ -153,60 +153,91 @@ class RAGEngine:
         Returns:
             A dictionary with the response and citations, or an error message.
         """
-        print(f"[INFO] RAGEngine received query: '{query}'")
+        if not text or not text.strip():
+            print("[WARN] Attempted to embed empty or whitespace-only text.")
+            return []
 
         try:
-            # 1. Embed the query
-            print("[INFO] Step 1: Generating query embedding...")
-            query_embedding = await self.gemini_agent_client.get_embedding(query)
-            if not query_embedding:
-                print("[ERROR] Failed to generate query embedding.")
-                return {
-                    "response": "Error: Could not generate an embedding for the query.",
-                    "citations": [],
-                }
-
-            # 2. Retrieve context from the vector database
-            print("[INFO] Step 2: Retrieving context from vector database...")
-            search_results = await self.vector_db_client.search_vectors(
-                query_embedding, limit=5
+            print(f"[INFO] Generating embedding for text: '{text[:50]}...'")
+            response = await self.client.embeddings.create(
+                model=EMBEDDING_MODEL_NAME, input=[text]
             )
+            embedding = response.data[0].embedding
 
-            context_texts = [
-                hit.payload.get("text", "")
-                for hit in search_results
-                if hit.payload
-            ]
-            citations = [
-                {
-                    "title": hit.payload.get("title", "Unknown Title"),
-                    "chapter_path": hit.payload.get("chapter_path", "Unknown Path"),
-                    "score": hit.score,
-                }
-                for hit in search_results
-                if hit.payload
-            ]
-            print(f"[INFO] Retrieved {len(context_texts)} context chunks.")
+            if len(embedding) != EXPECTED_EMBEDDING_DIM:
+                print(
+                    f"[WARN] Expected embedding dimension {EXPECTED_EMBEDDING_DIM}, "
+                    f"but got {len(embedding)}."
+                )
 
-            # 3. Augment the prompt
-            print("[INFO] Step 3: Augmenting prompt with context...")
-            augmented_prompt = self._build_rag_prompt(
-                query, context_texts, chat_history
+            print(f"[INFO] Embedding generated successfully. Size: {len(embedding)}")
+            return embedding
+
+        except APIError as e:
+            print(f"[ERROR] Gemini API error during embedding: {e}")
+            traceback.print_exc()
+            return []
+        except Exception as e:
+            print(f"[ERROR] An unexpected error occurred during embedding: {e}")
+            traceback.print_exc()
+            return []
+
+    async def generate_content(self, prompt: str) -> str:
+        """
+        Generates content using the Gemini model.
+
+        Args:
+            prompt: The complete prompt to send to the model.
+        
+        Returns:
+            The generated text content, or an empty string on error.
+        """
+        try:
+            print("[INFO] Generating content with Gemini model...")
+            response = await self.client.chat.completions.create(
+                model=GEMINI_MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=1500,
             )
+            content = response.choices[0].message.content
+            print("[INFO] Content generated successfully.")
+            return content if content else ""
 
-            # 4. Generate the response
-            print("[INFO] Step 4: Generating response with LLM...")
-            response_text = await self.gemini_agent_client.generate_content(
-                augmented_prompt
-            )
-            print("[INFO] Response generated successfully.")
-
-            return {"response": response_text, "citations": citations}
-
+        except APIError as e:
+            print(f"[ERROR] Gemini API error during content generation: {e}")
+            traceback.print_exc()
+            return "Error: The AI model failed to generate a response."
         except Exception as e:
             print(f"[ERROR] An unexpected error occurred in RAGEngine: {e}")
             traceback.print_exc()
-            return {
-                "response": "An unexpected error occurred. Please try again later.",
-                "citations": [],
-            }
+            return "Error: An unexpected error occurred while generating the response."
+
+
+async def main():
+    """Tests the GeminiAgentClient methods."""
+    print("\n--- Testing GeminiAgentClient ---")
+    client = GeminiAgentClient()
+
+    # --- Test Embedding ---
+    print("\n--- Testing Embedding Generation ---")
+    query = "What is Sim2Real transfer in robotics?"
+    embedding = await client.get_embedding(query)
+    if embedding:
+        print(f"✓ Embedding for '{query}' successful. Size: {len(embedding)}\n")
+    else:
+        print(f"✗ Embedding for '{query}' failed.\n")
+
+    # --- Test Content Generation ---
+    print("--- Testing Content Generation ---")
+    prompt = "Explain the concept of 'Physical AI' in two sentences."
+    response = await client.generate_content(prompt)
+    if response:
+        print(f"✓ Content generation successful. Response:\n---\n{response}\n---\n")
+    else:
+        print("✗ Content generation failed.\n")
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
