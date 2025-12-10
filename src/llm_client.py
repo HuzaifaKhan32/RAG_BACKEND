@@ -92,9 +92,10 @@ class GeminiAgentClient:
             return content if content else ""
 
         except APIError as e:
-            print(f"[ERROR] Gemini API error during content generation: {e}")
+            error_message = f"Gemini API error: {e}"                                                                   
+            print(f"[ERROR] {error_message}")
             traceback.print_exc()
-            return "Error: The AI model failed to generate a response."
+            raise Exception(error_message)
         except Exception as e:
             print(f"[ERROR] An unexpected error occurred during content generation: {e}")
             traceback.print_exc()
